@@ -1,0 +1,74 @@
+@rendermode InteractiveServer
+<div class="w-[320px] max-w-[480px]">
+  <div class="p-6 bg-white shadow-md rounded-md flex flex-col items-center">
+    <!-- Player List -->
+    <div class="flex flex-col mb-4 items-center">
+      <h2 class="mb-2">Room: <b>@RoomId</b></h2>
+      <div class="flex flex-col items-center">
+        <h2>All players <b>(@Players.Count)</b>:</h2>
+        <div class="mt-2 flex flex-col items-center">
+        @foreach (var player in @Players)
+        {
+            <div class="@(player.Id == CurrentPlayer.Id ? "font-bold" : "")">
+              @player.Username @(IsAdmin(player) ? "(admin)" : "")
+          </div>
+        }
+      </div>
+      </div>
+    </div>
+    @if (IsAdmin(CurrentPlayer))
+    {
+      <div class="mb-4 w-full">
+        <button @onclick="@StartGame" class="w-full bg-slate-200 font-bold rounded p-2">
+          Start Game
+        </button>
+      </div>
+    }
+  </div>
+</div>
+
+@code {
+  [Parameter]
+  public EventCallback OnStartClick { get; set; }
+
+  [Parameter]
+  public EventCallback OnJoined { get; set; }
+
+  [Parameter]
+  public string RoomId { get; set; }
+
+  [Parameter]
+  public List<Player> Players { get; set; } = [];
+
+  [Parameter]
+  public Player CurrentPlayer { get; set; }
+
+  protected override async Task OnInitializedAsync()
+  {
+  }
+
+  protected override async Task OnAfterRenderAsync(bool firstRender)
+  {
+    if (firstRender)
+    {
+      await OnJoined.InvokeAsync();
+    }
+  }
+  public async Task StartGame()
+  {
+    await OnStartClick.InvokeAsync();
+  }
+
+  public void Refresh()
+  {
+    this.InvokeAsync(() => this.StateHasChanged());
+  }
+
+  private bool IsAdmin(Player player)
+  {
+    if (Players.Count == 0) return false;
+
+    return Players.First().Id == player.Id;
+  }
+
+}

@@ -1,0 +1,122 @@
+@rendermode InteractiveServer
+@using Models.Enums;
+<div class="@KeyboardClasses()">
+    @foreach (var line in Keys)
+    {
+        <div class="flex justify-center mb-1">
+            @foreach (var key in line)
+            {
+                <div aria-label="Q"
+                    class=@(string.Join(" ", key.Classes))
+                    @onclick="@(e => OnKeyClicked(key))"
+                    style="transition-delay: unset; width: 40px;">@key.Name</div>
+            }
+        </div>
+
+    }
+
+</div>
+
+
+@code {
+    private List<List<Key>> Keys = [
+    new List<Key>{
+new Key("q", KeyType.Letter),
+new Key("w", KeyType.Letter),
+new Key("e", KeyType.Letter),
+new Key("r", KeyType.Letter),
+new Key("t", KeyType.Letter),
+new Key("y", KeyType.Letter),
+new Key("u", KeyType.Letter),
+new Key("i", KeyType.Letter),
+new Key("o", KeyType.Letter),
+new Key("p", KeyType.Letter),
+},
+new List<Key>{
+new Key("a", KeyType.Letter),
+new Key("s", KeyType.Letter),
+new Key("d", KeyType.Letter),
+new Key("f", KeyType.Letter),
+new Key("g", KeyType.Letter),
+new Key("h", KeyType.Letter),
+new Key("j", KeyType.Letter),
+new Key("k", KeyType.Letter),
+new Key("l", KeyType.Letter),
+},
+new List<Key>{
+new Key("Ent", KeyType.Enter),
+new Key("z", KeyType.Letter),
+new Key("x", KeyType.Letter),
+new Key("c", KeyType.Letter),
+new Key("v", KeyType.Letter),
+new Key("b", KeyType.Letter),
+new Key("n", KeyType.Letter),
+new Key("m", KeyType.Letter),
+new Key("Del", KeyType.Backspace),
+},
+
+];
+
+    [Parameter]
+    public EventCallback<Key> OnKeyClick { get; set; }
+
+        [Parameter]
+        public GameState GameState {get; set;}
+
+    protected override async Task OnInitializedAsync()
+    {
+
+    }
+
+    public async Task OnKeyClicked(Key key) {
+        if (IsLetter(key.Name) || key.Type == KeyType.Enter || key.Type == KeyType.Backspace)
+        await OnKeyClick.InvokeAsync(key);
+    }
+
+    public bool IsLetter(string key){
+        if (key == null) return false;
+        return Keys.Any(x => x.Any(y => y.Name.ToLower().Equals(key.ToLower())));
+    }
+
+    public bool IsEnter(string key) => key.ToLower().Equals(KeyType.Enter.ToString().ToLower());
+    public bool IsBackspace(string key) => key.ToLower().Equals(KeyType.Backspace.ToString().ToLower());
+
+
+private string KeyboardClasses() {
+                List<string> classes = [];
+                if (GameState == GameState.RoundFinished)
+                        classes = ["bg-gray-300", "cursor-not-allowed", "opacity-50"];
+
+                return string.Join(" ", classes);
+        }
+    
+
+    public class Key
+    {
+        public string Name;
+        public KeyType Type;
+        public string[] Classes = [
+        "flex",
+        "justify-center",
+        "items-center",
+        "rounded",
+        "mx-0.5",
+        "text-[15px]",
+        "font-bold",
+        "px-1",
+        "cursor-pointer",
+        "bg-slate-200",
+        "h-14",
+        "grow",
+        "shrink"
+        ];
+
+        public Key(string name, KeyType type)
+        {
+            Name = name.ToUpper();
+            Type = type;
+        }
+    }
+
+
+}

@@ -1,0 +1,56 @@
+@rendermode InteractiveServer
+
+<section class="flex flex-col justify-center text-gray-600 ">
+    <div class="h-full">
+        <!-- Card -->
+        <div class="relative w-[360px] mx-auto bg-white border-2 rounded-lg ">
+            <div class="py-1 px-5">
+                <h3 class="text-xs font-semibold uppercase text-gray-400">Progress</h3>
+                <div class="flex flex-col-reverse  h-[100px] overflow-auto">
+
+                    @foreach (var progress in playerProgresses)
+                    {
+
+                        <div class="w-full text-left py-2 focus:outline-none focus-visible:bg-indigo-50 divide-y divide-gray-200">
+                            <div class="flex justify-between">
+                                    <h4 class="text-sm font-semibold text-gray-900">@progress.PlayerUsername</h4>
+                                    <div class="flex">
+
+                                        @foreach (var cellState in progress.CellStates) 
+                                        {
+                                            <div class="h-4 w-4 border-[1px] border-gray-200 @progress.CellCssClasses(cellState)"></div>
+                                        }
+
+                                    </div>
+                            </div>
+                        </div>
+                    }
+
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+@code {
+
+    private List<PlayerProgress> playerProgresses = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+
+    }
+
+    public void AddPlayerProgress(PlayerProgress playerProgress)
+    {
+        playerProgresses = playerProgresses.Prepend(playerProgress).ToList();
+        this.InvokeAsync(() => this.StateHasChanged());
+    }
+
+    public void Reset() {
+        playerProgresses = [];
+        this.InvokeAsync(() => this.StateHasChanged());
+    }
+
+}

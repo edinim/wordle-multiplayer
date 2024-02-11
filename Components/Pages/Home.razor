@@ -1,0 +1,217 @@
+﻿@page "/"
+@using wordle_multiplayer.Components.Layout
+
+@rendermode InteractiveServer
+@using Models.Enums;
+@using Extensions;
+@using Services;
+@inject NavigationManager Navigation
+@using Microsoft.AspNetCore.SignalR.Client
+@implements IAsyncDisposable
+
+<PageTitle>Wordle Multiplayer</PageTitle>
+
+<div class="flex flex-col h-full items-center justify-center" @onkeydown="KeyDown" tabindex="0">
+@if (GameService.GameState == GameState.Waiting)
+{
+                <div class="flex flex-col justify-between items-center w-full outline-0 mt-2">
+                        @if (GameService.Player == null)
+                        {
+                                <JoinRoom OnJoinRoomClick="OnJoinRoomClick" OnCreateRoomClick="OnCreateRoomClick" />
+                        }
+                        else
+                        {
+                                <Room @ref="Room" Players="@GameService.Players" RoomId="@GameService.Room" OnStartClick="OnStartClick" CurrentPlayer="@GameService.Player" />
+                        }
+                </div>
+                
+}
+else
+{
+
+        <div>
+                <p>@GameService.SolutionWord</p>
+                <div class="flex flex-col justify-between items-center w-full outline-0">
+                        <Countdown @ref="Countdown" TimerOut="TimerOutCallback" />
+                </div>
+                <div class="flex flex-col justify-between items-center w-full outline-0">
+                        <Progress @ref="Progress" />
+                </div>
+                <div class="flex flex-col justify-between items-center w-full outline-0 mt-2">
+                        <GameBoard Board="@GameService.Board" GameState="@GameService.GameState" @ref="GameBoard" />
+                </div>
+                <div class="flex flex-col justify-between w-[360px] mx-auto outline-0 mt-2">
+                        <Keyboard @ref="Keyboard" GameState="@GameService.GameState" OnKeyClick="OnKeyboardKeyClicked" />
+                </div>
+                <div>
+                        <RoundAlert @ref="RoundAlert" StartNextRound="NextRound"/>
+                </div>
+
+        </div>
+}
+</div>
+@code {
+
+
+        [Inject]
+        private GameService GameService { get; set; }
+
+        private HubConnection? hubConnection;
+
+        GameBoard GameBoard;
+        Keyboard Keyboard;
+        Progress Progress;
+        Room Room;
+        RoundAlert RoundAlert;
+        Countdown Countdown;
+
+        protected override async Task OnInitializedAsync()
+        {
+        }
+
+        protected override async Task OnAfterRenderAsync(bool firstRender)
+        {
+
+                if (firstRender)
+                {
+                        hubConnection = new HubConnectionBuilder()
+                        .WithUrl(Navigation.ToAbsoluteUri("/gamehub"))
+                        .Build();
+
+                        hubConnection.On<string, Player>("NewPlayer", async (room, player) =>
+                        {
+                                await GameService.AddPlayer(room, player);
+                                Room.Refresh();
+                        });
+
+                        hubConnection.On<string, GameState>("GameState", async (room, gameState) =>
+                        {
+                                if (GameService.GameState != gameState)
+                                {
+                                        GameService.GameState = gameState;
+                                        if (gameState == GameState.Playing)
+                                                await GameService.Start();
+                                        InvokeAsync(() => StateHasChanged());
+                                }
+
+                        });
+
+                        hubConnection.On<string, string, List<CellState>>("ChatProgress", async (room, player, cellStates) =>
+                        {
+                                Progress.AddPlayerProgress(new PlayerProgress(player, cellStates));
+                        });
+
+                        hubConnection.On<string, Round>("RoundFinished", async (room, round) =>
+                        {
+                                GameService.GameState = GameState.RoundFinished;
+                                RoundAlert.Open(round.SolutionWord, round.Winner);
+                                Countdown.Stop();
+                                InvokeAsync(() => StateHasChanged());
+
+                        });
+
+                        await hubConnection.StartAsync();
+                }
+        }
+
+
+        public async Task OnJoinRoomClick((Player player, string room) joinData)
+        {
+                await GameService.JoinRoom(joinData.room.ToUpper(), joinData.player, hubConnection);
+
+                if (hubConnection != null)
+                        await hubConnection.SendAsync("JoinRoom", joinData.room.ToUpper(), joinData.player);
+
+        }
+
+        public async Task OnCreateRoomClick(Player player)
+        {
+                await GameService.CreateRoom(player, hubConnection);
+
+                if (hubConnection != null)
+                        await hubConnection.SendAsync("JoinRoom", GameService.Room, player);
+
+        }
+
+        public async Task NextRound() {
+                await GameService.NextRound();
+                Progress.Reset();
+                Countdown.Start();
+                InvokeAsync(() => StateHasChanged());
+
+        }
+
+
+        public async Task OnStartClick()
+        {
+                await GameService.Start();
+                await hubConnection.SendAsync("GameState", GameService.Room, GameService.GameState);
+                StateHasChanged();
+        }
+
+        public void OnKeyboardKeyClicked(Keyboard.Key key)
+        {
+                if (GameService.GameState != GameState.Playing) return;
+
+                if (key.Type == KeyType.Letter)
+                        AddLetter(key.Name);
+                else if (key.Type == KeyType.Backspace)
+                        Backspace();
+                else if (key.Type == KeyType.Enter)
+                {
+                        CheckSolution();
+                }
+
+        }
+
+        private async Task KeyDown(KeyboardEventArgs e)
+        {
+                if (GameService.GameState != GameState.Playing) return;
+                string key = e.Key.ToUpper();
+
+                if (Keyboard.IsLetter(key))
+                        AddLetter(key);
+                else if (Keyboard.IsBackspace(key))
+                        Backspace();
+                else if (Keyboard.IsEnter(key))
+                {
+                        await CheckSolution();
+                }
+        }
+
+        private void AddLetter(string key)
+        {
+                GameService.AddLetter(key);
+                GameBoard.Refresh();
+        }
+
+        private void Backspace()
+        {
+                GameService.Backspace();
+                GameBoard.Refresh();
+
+        }
+        private async Task CheckSolution()
+        {
+                await GameService.CheckSolution();
+                GameBoard.Refresh();
+        }
+
+
+        private void TimerOutCallback()
+        {
+                GameService.RoundTimerEnded();
+                GameBoard.Refresh();
+                InvokeAsync(() => StateHasChanged());
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+                if (hubConnection is not null)
+                {
+                        await hubConnection.DisposeAsync();
+                }
+        }
+
+}
+

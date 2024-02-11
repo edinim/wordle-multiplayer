@@ -1,0 +1,76 @@
+@implements IDisposable
+
+<div>
+    <p>
+    <b>@_secondsLeft</b>
+     seconds
+    </p>
+</div>
+
+@code {
+    private System.Timers.Timer _timer = null!;
+    private const int _roundSeconds = 45;
+    private int _secondsLeft = _roundSeconds;
+
+    [Parameter]
+    public EventCallback TimerOut { get; set; }
+
+    protected override void OnInitialized()
+    {
+        _timer = new System.Timers.Timer(1000);
+        _timer.Elapsed += OnTimedEvent;
+        _timer.AutoReset = true;
+
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            Start();
+            StateHasChanged();
+        }
+    }
+
+
+    public void Start()
+    {
+        _secondsLeft = _roundSeconds;
+        _timer.Start();
+        InvokeAsync(() =>
+        {
+            StateHasChanged();
+        });
+    }
+
+    public void Stop()
+    {
+        _timer.Stop();
+    }
+
+    private async void OnTimedEvent(object? sender, System.Timers.ElapsedEventArgs e)
+    {
+        _secondsLeft--;
+
+        await InvokeAsync(() =>
+        {
+            StateHasChanged();
+        });
+
+        if (_secondsLeft <= 0)
+        {
+            _timer.Stop();
+            await InvokeAsync(async () =>
+            {
+                await TimerOut.InvokeAsync();
+            });
+
+        }
+    }
+
+    public void Dispose()
+    {
+        _timer.Dispose();
+    }
+
+}

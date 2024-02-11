@@ -1,0 +1,45 @@
+@rendermode InteractiveServer
+<div class="@BoardClasses()">
+ 
+        @for (var i = 0; i < Board.GetLength(0); i++)
+        {
+
+                <div class="flex ">
+                        @for (var j = 0; j < Board.GetLength(1); j++)
+                        {
+                                <div class="flex justify-center items-center h-16 w-16 pb-1  
+                                        text-3xl font-bold border-2 border-middlegray 
+                                        text-black border-darkgray @string.Join(" ", Board[i,j].CssClasses)">
+                                        @Board[i, j].Value
+                                </div>
+                        }
+                </div>
+        }
+
+
+</div>
+@code {
+
+        [Parameter]
+        public Cell[,] Board {get; set;}
+
+        [Parameter]
+        public GameState GameState {get; set;}
+
+        protected override async Task OnInitializedAsync()
+        {
+        }
+
+        private string BoardClasses() {
+                List<string> classes = [];
+                if (GameState == GameState.RoundFinished)
+                        classes = ["bg-gray-300", "cursor-none", "opacity-50"];
+
+                return string.Join(" ", classes);
+        }
+
+        public void Refresh() {
+                StateHasChanged();
+        }
+        
+}

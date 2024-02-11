@@ -1,0 +1,72 @@
+<div id="modal"
+    class="@(_open ? "" : "hidden") fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white p-6 rounded shadow-md w-96">
+
+
+    <p class="text-lg font-semibold mb-4">
+        @if (_winner != null) {
+        <div>
+            <b>@_winner</b> has won this round!
+        </div>
+        } else {
+            <div>
+                <p>No winner on this round!</p>
+            </div>
+        }
+    </p>
+    <p class="text-lg font-semibold mb-4">Solution word was: <b>@_solutionWord</b></p>
+    <p class="text-lg font-semibold">Next round starts in: <b>@_nextRoundSecondsLeft</b></p>
+
+</div>
+
+@code {
+
+    [Parameter]
+    public EventCallback StartNextRound { get; set; }
+    private bool _open = false;
+    private string _solutionWord = "";
+    private string _winner = "";
+
+    private const int _alertShowSeconds = 7;
+
+    private int _nextRoundSecondsLeft = _alertShowSeconds;
+
+
+    protected override void OnInitialized()
+    {
+
+    }
+
+
+    public void Open(string solutionWord, string winner)
+    {
+        _solutionWord = solutionWord.ToUpper();
+        _winner = winner;
+        _open = true;
+        this.InvokeAsync(() => this.StateHasChanged());
+        StartTimer();
+    }
+
+    private async Task StartTimer()
+    {
+        var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+
+        while (await timer.WaitForNextTickAsync())
+        {
+            _nextRoundSecondsLeft -= 1;
+
+            if (_nextRoundSecondsLeft <= 0)
+            {
+                _open = false;
+                _nextRoundSecondsLeft = _alertShowSeconds;
+                await StartNextRound.InvokeAsync();
+
+                timer.Dispose();
+            }
+
+            this.InvokeAsync(() => this.StateHasChanged());
+
+        }
+
+    }
+
+}

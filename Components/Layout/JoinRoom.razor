@@ -1,0 +1,98 @@
+@inject Blazored.LocalStorage.ILocalStorageService localStorage
+
+<div class="w-[320px] max-w-[480px]">
+  <div class="p-6 bg-white shadow-md rounded-md flex flex-col items-center">
+    <div class="mb-4 w-full">
+      <label for="username" class="block text-sm font-medium text-gray-700">Username:</label>
+      <input placeholder="Enter your name" type="text" @bind="@_username" class="mt-1 p-2 w-full border rounded-md">
+    </div>
+    <div class="mb-4 w-full">
+      <button @onclick="@CreateRoom" class="w-full bg-slate-200 font-bold rounded p-2">
+        Create Room
+      </button>
+    </div>
+    <div class="mb-4 w-full">
+      @if (_joinRoom)
+      {
+        <label class="block text-sm font-medium text-gray-700">Room:</label>
+        <input placeholder="Enter your room code" type="text" @bind="@_room"
+          class="mt-1 p-2 w-full border rounded-md mb-4 uppercase placeholder:normal-case">
+        <button @onclick="@Join" class="w-full bg-slate-200 font-bold rounded p-2">
+          Play
+        </button>
+      }
+      else
+      {
+        <button @onclick="() => { _joinRoom = true; StateHasChanged(); }"
+          class="w-full bg-slate-200 font-bold rounded p-2">
+          Join Room
+        </button>
+      }
+
+    </div>
+  </div>
+
+</div>
+
+@code {
+
+
+  private string _username { get; set; }
+  private string _room { get; set; } = "";
+  private bool _joinRoom = false;
+
+  [Parameter]
+  public EventCallback<(Player, string)> OnJoinRoomClick { get; set; }
+  [Parameter]
+  public EventCallback<Player> OnCreateRoomClick { get; set; }
+
+  private string _playerId { get; set; }
+
+  private string _playerIdKey = "wordle-multiplayer:player-id";
+  private string _playerUsernameKey = "wordle-multiplayer:player-username";
+
+  protected override async Task OnAfterRenderAsync(bool firstRender)
+  {
+    if (firstRender)
+    {
+
+      _playerId = await localStorage.GetItemAsync<string>(_playerIdKey);
+      _username = await localStorage.GetItemAsync<string>(_playerUsernameKey);
+
+      if (_playerId == null)
+      {
+        _playerId = Guid.NewGuid().ToString();
+        await localStorage.SetItemAsync(_playerIdKey, _playerId);
+      }
+
+      StateHasChanged();
+    }
+  }
+
+
+  public async Task CreateRoom()
+  {
+    await ValidateUsername();
+
+    await OnCreateRoomClick.InvokeAsync(new Player(_playerId, _username));
+  }
+
+  public async Task Join()
+  {
+    await ValidateUsername();
+
+    await OnJoinRoomClick.InvokeAsync((new Player(_playerId, _username), _room));
+  }
+
+  private async Task ValidateUsername()
+  {
+    if (string.IsNullOrEmpty(_username))
+    {
+      _username = "Player " + new Random().Next(100000);
+    }
+
+    await localStorage.SetItemAsync(_playerUsernameKey, _username);
+
+  }
+
+}
