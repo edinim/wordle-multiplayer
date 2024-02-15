@@ -12,3 +12,10 @@ For testing purposes, the solution word will display at the top left side.
 
 ### 🟩🟨 Demo
 [Play the game here](https://wordle-multiplayer.azurewebsites.net)
+
+<img src="https://i.imgur.com/XiSfToM.png" width="300"/> <img src="https://i.imgur.com/NWvMQDS.png" width="300"/> 
+
+<img src="https://i.imgur.com/jBe348c.png" width="300"/> <img src="https://i.imgur.com/3pWq3Rq.png" width="300"/>
+
+
+
